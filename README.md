@@ -108,6 +108,24 @@ of the current host.
 Other services can connect to this rtpmidi port and ALSA ports
 will be created for this connection.
 
+### Merging network MIDI into a single ALSA port
+
+By default, each remote peer that connects to the rtpmidi port gets its own
+ALSA sequencer port. This means local applications must subscribe to each
+individual port, and subscriptions break when peers reconnect.
+
+Setting `merge_network_input=true` in the `[rtpmidi_announce]` section creates
+a single shared ALSA port (named after the server) that receives MIDI from all
+connected network peers. Local applications subscribe once and the subscription
+survives peer reconnects.
+
+```ini
+[rtpmidi_announce]
+name=instruments
+port=5004
+merge_network_input=true
+```
+
 ### ALSA `Network` port.
 
 To export a local alsa sequencer port, connect it to the "Network" port.
@@ -156,6 +174,7 @@ control=/var/run/rtpmidid/control.sock
 [rtpmidi_announce]
 name={{hostname}}
 port=5004
+# merge_network_input=true
 
 # Alsa announcement requires no firewall as it creates random
 # ports for each connection. If you want to not have an alsa_announce

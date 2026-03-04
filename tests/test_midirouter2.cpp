@@ -22,6 +22,7 @@
 #include "../src/mididata.hpp"
 #include "../src/midirouter.hpp"
 #include "../src/network_rtpmidi_listener.hpp"
+#include "../src/network_rtpmidi_multi_listener.hpp"
 #include "../src/settings.hpp"
 #include "../tests/test_case.hpp"
 #include "local_alsa_listener.hpp"
@@ -384,11 +385,102 @@ void test_midirouter_alsa_listener_lifecycle() {
   INFO("Ok, disconnected 2, peer not exists");
 }
 
+void test_merge_network_input() {
+  auto router = std::make_shared<rtpmididns::midirouter_t>();
+
+  std::shared_ptr<rtpmididns::aseq_t> aseq;
+  try {
+    aseq = std::make_shared<rtpmididns::aseq_t>("merge-test");
+  } catch (rtpmididns::alsa_connect_exception &exc) {
+    ERROR("ALSA CONNECT EXCEPTION: {}", exc.what());
+    INFO("Skipping test as ALSA is not available.");
+    return;
+  }
+
+  // Create a multi listener with merge_network_input=true
+  router->add_peer(rtpmididns::make_network_rtpmidi_multi_listener(
+      "merge-test", "0", aseq, true));
+
+  // Connect two RTP peers
+  auto client_a = rtpmidid::rtpclient_t("Peer A");
+
+  int port = 0;
+  router->for_each_peer<rtpmididns::network_rtpmidi_multi_listener_t>(
+      [&port](auto *peer) { port = peer->server.port(); });
+  ASSERT_NOT_EQUAL(port, 0);
+
+  client_a.add_server_address("localhost", std::to_string(port));
+  poller_wait_until([&client_a]() {
+    return client_a.peer.status == rtpmidid::rtppeer_t::status_e::CONNECTED;
+  });
+
+  // After first connection: 1 listener + 1 alsa peer + 1 network peer = 3
+  ASSERT_EQUAL(router->peers.size(), 3);
+
+  auto client_b = rtpmidid::rtpclient_t("Peer B");
+  client_b.add_server_address("localhost", std::to_string(port));
+  poller_wait_until([&client_b]() {
+    return client_b.peer.status == rtpmidid::rtppeer_t::status_e::CONNECTED;
+  });
+
+  // After second connection: should reuse the ALSA peer
+  // 1 listener + 1 shared alsa peer + 2 network peers = 4
+  ASSERT_EQUAL(router->peers.size(), 4);
+
+  router->clear();
+}
+
+void test_no_merge_network_input() {
+  auto router = std::make_shared<rtpmididns::midirouter_t>();
+
+  std::shared_ptr<rtpmididns::aseq_t> aseq;
+  try {
+    aseq = std::make_shared<rtpmididns::aseq_t>("nomerge-test");
+  } catch (rtpmididns::alsa_connect_exception &exc) {
+    ERROR("ALSA CONNECT EXCEPTION: {}", exc.what());
+    INFO("Skipping test as ALSA is not available.");
+    return;
+  }
+
+  // Create a multi listener with merge_network_input=false (default)
+  router->add_peer(rtpmididns::make_network_rtpmidi_multi_listener(
+      "nomerge-test", "0", aseq, false));
+
+  auto client_a = rtpmidid::rtpclient_t("Peer A");
+
+  int port = 0;
+  router->for_each_peer<rtpmididns::network_rtpmidi_multi_listener_t>(
+      [&port](auto *peer) { port = peer->server.port(); });
+  ASSERT_NOT_EQUAL(port, 0);
+
+  client_a.add_server_address("localhost", std::to_string(port));
+  poller_wait_until([&client_a]() {
+    return client_a.peer.status == rtpmidid::rtppeer_t::status_e::CONNECTED;
+  });
+
+  // After first connection: 1 listener + 1 alsa peer + 1 network peer = 3
+  ASSERT_EQUAL(router->peers.size(), 3);
+
+  auto client_b = rtpmidid::rtpclient_t("Peer B");
+  client_b.add_server_address("localhost", std::to_string(port));
+  poller_wait_until([&client_b]() {
+    return client_b.peer.status == rtpmidid::rtppeer_t::status_e::CONNECTED;
+  });
+
+  // Without merge: each peer gets its own ALSA peer
+  // 1 listener + 2 alsa peers + 2 network peers = 5
+  ASSERT_EQUAL(router->peers.size(), 5);
+
+  router->clear();
+}
+
 // NOLINTNEXTLINE(bugprone-exception-escape)
 int main(int argc, char **argv) {
   test_case_t testcase{
       TEST(test_send_receive_messages),
       TEST(test_midirouter_alsa_listener_lifecycle),
+      TEST(test_merge_network_input),
+      TEST(test_no_merge_network_input),
   };
 
   testcase.run(argc, argv);
