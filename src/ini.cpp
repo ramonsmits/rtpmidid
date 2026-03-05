@@ -31,7 +31,7 @@ static bool parse_bool(const std::string &value) {
     return true;
   std::string lower = value;
   std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
-  return lower == "true";
+  return lower == "true" || lower == "yes" || lower == "on";
 }
 
 // Loads an INI file and sets the data in the settings_t struct

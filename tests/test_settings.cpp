@@ -95,6 +95,14 @@ void test_parse_ini(void) {
   ASSERT_EQUAL(settings.rtpmidi_announces[3].merge_network_input, true);
   ASSERT_EQUAL(settings.rtpmidi_announces[3].merge_network_output, false);
 
+  reader.parse_line("[rtpmidi_announce]");
+  reader.parse_line("name=name5");
+  reader.parse_line("port=port5");
+  reader.parse_line("merge_network_input=yes");
+  reader.parse_line("merge_network_output=on");
+  ASSERT_EQUAL(settings.rtpmidi_announces[4].merge_network_input, true);
+  ASSERT_EQUAL(settings.rtpmidi_announces[4].merge_network_output, true);
+
   ASSERT_EQUAL(settings.rtpmidi_discover.enabled, true);
   bool matches = std::regex_search(
       "anything", settings.rtpmidi_discover.name_positive_regex);
