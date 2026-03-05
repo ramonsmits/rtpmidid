@@ -78,6 +78,23 @@ void test_parse_ini(void) {
   ASSERT_EQUAL(settings.rtpmidi_announces[1].merge_network_input, true);
   ASSERT_EQUAL(settings.rtpmidi_announces[1].merge_network_output, true);
 
+  // Robustness: accept any casing and "1"
+  reader.parse_line("[rtpmidi_announce]");
+  reader.parse_line("name=name3");
+  reader.parse_line("port=port3");
+  reader.parse_line("merge_network_input=True");
+  reader.parse_line("merge_network_output=1");
+  ASSERT_EQUAL(settings.rtpmidi_announces[2].merge_network_input, true);
+  ASSERT_EQUAL(settings.rtpmidi_announces[2].merge_network_output, true);
+
+  reader.parse_line("[rtpmidi_announce]");
+  reader.parse_line("name=name4");
+  reader.parse_line("port=port4");
+  reader.parse_line("merge_network_input=TRUE");
+  reader.parse_line("merge_network_output=false");
+  ASSERT_EQUAL(settings.rtpmidi_announces[3].merge_network_input, true);
+  ASSERT_EQUAL(settings.rtpmidi_announces[3].merge_network_output, false);
+
   ASSERT_EQUAL(settings.rtpmidi_discover.enabled, true);
   bool matches = std::regex_search(
       "anything", settings.rtpmidi_discover.name_positive_regex);
