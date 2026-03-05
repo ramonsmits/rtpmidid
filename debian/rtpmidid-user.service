@@ -1,0 +1,15 @@
+[Unit]
+Description=rtpmidid
+Wants=avahi-daemon.service
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/rtpmidid --ini=%h/.config/rtpmidid/default.ini
+Restart=on-failure
+# realtime, so more precise
+CPUSchedulingPolicy=fifo
+# no need for max priority (20)
+CPUSchedulingPriority=10
+
+[Install]
+WantedBy=default.target
