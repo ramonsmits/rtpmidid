@@ -269,15 +269,38 @@ networks, as the thernet protocol already has packet error and detection, but
 packets may arrive out of order. Anyway **its not production ready** just for
 this missing feature.
 
-## CLI Control
+## Control Socket
 
-There is a basic CLI that used the [Unix socket control](#unix-socket-control).
+`rtpmidid` exposes a Unix socket for runtime control — querying status,
+creating connections, and managing peers without restarting the daemon.
 
-Use as:
+By default the socket is at `/var/run/rtpmidid/control.sock`. Override with
+`--control PATH` or set `control=PATH` in the `[general]` INI section.
+
+The protocol is JSON-RPC over a Unix stream socket: send a JSON object with
+a `method` key (and optional `params`), receive a JSON response.
+
+```shell
+# Query available commands
+echo '{"method":"help"}' | socat - UNIX-CONNECT:/var/run/rtpmidid/control.sock
+
+# Query daemon status (version, router peers, mDNS announcements)
+echo '{"method":"status"}' | socat - UNIX-CONNECT:/var/run/rtpmidid/control.sock
+
+# Connect to a remote peer
+echo '{"method":"connect","params":{"name":"Synth","hostname":"192.168.1.13","port":"5004"}}' \
+  | socat - UNIX-CONNECT:/var/run/rtpmidid/control.sock
+```
+
+There is also a CLI wrapper:
 
 ```shell
 cli/rtpmidid-cli.py help
+cli/rtpmidid-cli.py status
+cli/rtpmidid-cli.py connect Synth 192.168.1.13 5004
 ```
+
+For the full protocol reference and tips, see [docs/CONTROL.md](docs/CONTROL.md).
 
 ## License
 
