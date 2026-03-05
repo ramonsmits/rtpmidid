@@ -64,13 +64,44 @@ void test_parse_ini(void) {
   ASSERT_EQUAL(settings.rtpmidi_announces.size(), 1);
   ASSERT_EQUAL(settings.rtpmidi_announces[0].name, "name");
   ASSERT_EQUAL(settings.rtpmidi_announces[0].port, "port");
+  ASSERT_EQUAL(settings.rtpmidi_announces[0].merge_network_input, false);
+  ASSERT_EQUAL(settings.rtpmidi_announces[0].merge_network_output, false);
 
   reader.parse_line("[rtpmidi_announce]");
   reader.parse_line("name=name2");
   reader.parse_line("port=port2");
+  reader.parse_line("merge_network_input=true");
+  reader.parse_line("merge_network_output=true");
   ASSERT_EQUAL(settings.rtpmidi_announces.size(), 2);
   ASSERT_EQUAL(settings.rtpmidi_announces[1].name, "name2");
   ASSERT_EQUAL(settings.rtpmidi_announces[1].port, "port2");
+  ASSERT_EQUAL(settings.rtpmidi_announces[1].merge_network_input, true);
+  ASSERT_EQUAL(settings.rtpmidi_announces[1].merge_network_output, true);
+
+  // Robustness: accept any casing and "1"
+  reader.parse_line("[rtpmidi_announce]");
+  reader.parse_line("name=name3");
+  reader.parse_line("port=port3");
+  reader.parse_line("merge_network_input=True");
+  reader.parse_line("merge_network_output=1");
+  ASSERT_EQUAL(settings.rtpmidi_announces[2].merge_network_input, true);
+  ASSERT_EQUAL(settings.rtpmidi_announces[2].merge_network_output, true);
+
+  reader.parse_line("[rtpmidi_announce]");
+  reader.parse_line("name=name4");
+  reader.parse_line("port=port4");
+  reader.parse_line("merge_network_input=TRUE");
+  reader.parse_line("merge_network_output=false");
+  ASSERT_EQUAL(settings.rtpmidi_announces[3].merge_network_input, true);
+  ASSERT_EQUAL(settings.rtpmidi_announces[3].merge_network_output, false);
+
+  reader.parse_line("[rtpmidi_announce]");
+  reader.parse_line("name=name5");
+  reader.parse_line("port=port5");
+  reader.parse_line("merge_network_input=yes");
+  reader.parse_line("merge_network_output=on");
+  ASSERT_EQUAL(settings.rtpmidi_announces[4].merge_network_input, true);
+  ASSERT_EQUAL(settings.rtpmidi_announces[4].merge_network_output, true);
 
   ASSERT_EQUAL(settings.rtpmidi_discover.enabled, true);
   bool matches = std::regex_search(

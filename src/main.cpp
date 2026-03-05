@@ -103,7 +103,8 @@ protected:
     // Create all the rtpmidi network midipeers
     for (const auto &announce : rtpmididns::settings.rtpmidi_announces) {
       router->add_peer(rtpmididns::make_network_rtpmidi_multi_listener(
-          announce.name, announce.port, aseq));
+          announce.name, announce.port, aseq, announce.merge_network_input,
+          announce.merge_network_output));
     }
   }
 

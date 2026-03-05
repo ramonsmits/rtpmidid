@@ -26,6 +26,14 @@
 
 namespace rtpmididns {
 
+static bool parse_bool(const std::string &value) {
+  if (value == "1")
+    return true;
+  std::string lower = value;
+  std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+  return lower == "true" || lower == "yes" || lower == "on";
+}
+
 // Loads an INI file and sets the data in the settings_t struct
 void load_ini(const std::string &filename) {
   auto fd = std::ifstream(filename);
@@ -140,12 +148,16 @@ void IniReader::parse_line(const std::string &origline) {
       rtpmidi_announce->name = value;
     } else if (key == "port") {
       rtpmidi_announce->port = value;
+    } else if (key == "merge_network_input") {
+      rtpmidi_announce->merge_network_input = parse_bool(value);
+    } else if (key == "merge_network_output") {
+      rtpmidi_announce->merge_network_output = parse_bool(value);
     } else {
       throw rtpmidid::ini_exception(filename, lineno, "Invalid key: {}", key);
     }
   } else if (section == "rtpmidi_discover") {
     if (key == "enabled") {
-      settings->rtpmidi_discover.enabled = value == "true";
+      settings->rtpmidi_discover.enabled = parse_bool(value);
     } else if (key == "name_positive_regex") {
       settings->rtpmidi_discover.name_positive_regex = std::regex(value);
     } else if (key == "name_negative_regex") {

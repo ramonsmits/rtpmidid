@@ -34,6 +34,8 @@ struct settings_t {
   struct rtpmidi_announce_t {
     std::string name;
     std::string port;
+    bool merge_network_input = false;
+    bool merge_network_output = false;
   };
 
   struct rtpmidi_discover_t {
@@ -111,7 +113,9 @@ BASIC_FORMATTER(rtpmididns::settings_t::alsa_hw_auto_export_t,
                 "alsa_hw_auto_export_t[{}, {}, {}]", v.name_positive,
                 v.name_negative, v.type);
 BASIC_FORMATTER(rtpmididns::settings_t::rtpmidi_announce_t,
-                "rtpmidi_announce_t[{}, {}]", v.name, v.port);
+                "rtpmidi_announce_t[{}, {}, merge_in={}, merge_out={}]",
+                v.name, v.port, v.merge_network_input,
+                v.merge_network_output);
 BASIC_FORMATTER(rtpmididns::settings_t::alsa_announce_t, "alsa_announce_t[{}]",
                 v.name);
 BASIC_FORMATTER(::std::regex, "regex[{}]", "??");

@@ -29,8 +29,11 @@ extern std::shared_ptr<::rtpmidid::mdns_rtpmidi_t> mdns;
 
 network_rtpmidi_multi_listener_t::network_rtpmidi_multi_listener_t(
     const std::string &name, const std::string &port,
-    std::shared_ptr<aseq_t> aseq_)
-    : aseq(aseq_), server(name, port) {
+    std::shared_ptr<aseq_t> aseq_, bool merge_network_input_,
+    bool merge_network_output_)
+    : aseq(aseq_), server(name, port),
+      merge_network_input(merge_network_input_),
+      merge_network_output(merge_network_output_) {
   if (mdns)
     mdns->announce_rtpmidi(name, server.port());
 
@@ -41,11 +44,35 @@ network_rtpmidi_multi_listener_t::network_rtpmidi_multi_listener_t(
           return;
         }
         DEBUG("Got connection from {}", peer->remote_name);
-        auto alsa_id =
-            router->add_peer(make_local_alsa_peer(peer->remote_name, aseq));
+
+        midipeer_id_t alsa_id;
+        if (merge_network_input) {
+          if (shared_alsa_peer_id == 0) {
+            shared_alsa_peer_id =
+                router->add_peer(make_local_alsa_peer(server.name, aseq));
+            DEBUG("Created shared ALSA peer {} for merged network input",
+                  shared_alsa_peer_id);
+          }
+          alsa_id = shared_alsa_peer_id;
+        } else {
+          alsa_id =
+              router->add_peer(make_local_alsa_peer(peer->remote_name, aseq));
+        }
+
         auto peer_id = router->add_peer(make_network_rtpmidi_peer(peer));
         router->connect(alsa_id, peer_id);
         router->connect(peer_id, alsa_id);
+
+        if (merge_network_output && !merge_network_input) {
+          if (shared_alsa_output_peer_id == 0) {
+            shared_alsa_output_peer_id =
+                router->add_peer(make_local_alsa_peer(server.name, aseq));
+            DEBUG("Created shared broadcast ALSA peer {} for merged network "
+                  "output",
+                  shared_alsa_output_peer_id);
+          }
+          router->connect(shared_alsa_output_peer_id, peer_id);
+        }
       });
 }
 
