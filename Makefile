@@ -35,6 +35,7 @@ help:
 	@echo " packages  -- Build all packages (DEB and RPM) in Docker containers"
 	@echo " test      -- Runs all test"
 	@echo " install   -- Installs to PREFIX or DESTDIR (default /usr/local/)"
+	@echo " install-user -- Installs as user service to ~/.local/ and ~/.config/"
 	@echo " man       -- Generate man pages"
 	@echo
 	@echo " run-gdb  -- Run inside gdb, to capture backtrace of failures (bt). Useful for bug reports."
@@ -169,6 +170,26 @@ install-rtpmidid: build man
 	mkdir -p $(USR)/share/man/man1/
 	cp build/man/rtpmidid.1 $(USR)/share/man/man1/
 	cp build/man/rtpmidid-cli.1 $(USR)/share/man/man1/
+
+.PHONY: install-user
+install-user: build man
+	mkdir -p $(HOME)/.local/bin/
+	cp build/src/rtpmidid $(HOME)/.local/bin/
+	cd cli && make compile
+	cp build/rtpmidid-cli $(HOME)/.local/bin/rtpmidid-cli
+	mkdir -p $(HOME)/.config/rtpmidid/
+	cp -n default.ini $(HOME)/.config/rtpmidid/ || true
+	mkdir -p $(HOME)/.config/systemd/user/
+	cp debian/rtpmidid-user.service $(HOME)/.config/systemd/user/rtpmidid.service
+	systemctl --user daemon-reload
+	@echo
+	@echo "Installed rtpmidid as a user service."
+	@echo "  Config: ~/.config/rtpmidid/default.ini"
+	@echo "  Binary: ~/.local/bin/rtpmidid"
+	@echo
+	@echo "Enable and start with:"
+	@echo "  systemctl --user enable --now rtpmidid"
+	@echo
 
 install-librtpmidid0: build
 	mkdir -p $(USR)/lib/
