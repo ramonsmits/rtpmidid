@@ -125,6 +125,13 @@ execute_process(
   COMMAND bash -c "git describe --match \"v[0-9]*\" --tags --abbrev=5 HEAD | sed 's/^v//g' | sed 's/-/~/g' | tr -d '\n'"
   OUTPUT_VARIABLE RTPMIDID_VERSION
 )
+execute_process(
+  COMMAND bash -c "git rev-parse --abbrev-ref HEAD | tr -d '\n'"
+  OUTPUT_VARIABLE GIT_BRANCH
+)
+if(NOT GIT_BRANCH MATCHES "^(master|main)$")
+  set(RTPMIDID_VERSION "${RTPMIDID_VERSION}-${GIT_BRANCH}")
+endif()
 add_definitions(-DRTPMIDID_VERSION=\"${RTPMIDID_VERSION}\")
 add_definitions(-DLOG_LEVEL=${LOG_LEVEL})
 message(STATUS "Version ${RTPMIDID_VERSION}")
