@@ -31,3 +31,6 @@ licensed.
 
 * David Moreno - https://github.com/davidmoreno - Creator
 * Albert Graef - https://github.com/agraef - SysEx support, added more MIDI messages
+* sadguitarius - https://github.com/sadguitarius - Build fixes, mold linker fix, long SysEx, ALSA multi listener fix
+* Moritz Müller-Guthof - https://github.com/momomentum - Remove global mDNS pointer hack
+* Ramon Smits - https://github.com/ramonsmits - Merge network input/output, user service install, man pages, documentation
