@@ -4,8 +4,9 @@ Wants=avahi-daemon.service
 
 [Service]
 Type=simple
-ExecStart=%h/.local/bin/rtpmidid --ini=%h/.config/rtpmidid/default.ini
+ExecStart=%h/.local/bin/rtpmidid --ini=%h/.config/rtpmidid/default.ini --control=%t/rtpmidid/control.sock
 Restart=on-failure
+RuntimeDirectory=rtpmidid
 # realtime, so more precise
 CPUSchedulingPolicy=fifo
 # no need for max priority (20)
