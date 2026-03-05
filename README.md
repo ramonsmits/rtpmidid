@@ -211,6 +211,13 @@ make docker-rpm DISTRO=fedora-43
 
 Packages are output to `packaging/dist/<distro>/<arch>/`. See `packaging/README.md` for supported distributions and architectures.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines, including the
+documentation checklist for new features. When adding options or INI settings,
+remember to update the man pages (`rtpmidid.1.md`, `rtpmidid-cli.1.md`),
+`default.ini`, and this README.
+
 ## Testing and bug reporting
 
 If you find any bug, please report it to https://github.com/davidmoreno/rtpmidid/issues/
