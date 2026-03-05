@@ -142,6 +142,8 @@ void IniReader::parse_line(const std::string &origline) {
       rtpmidi_announce->port = value;
     } else if (key == "merge_network_input") {
       rtpmidi_announce->merge_network_input = (value == "true");
+    } else if (key == "merge_network_output") {
+      rtpmidi_announce->merge_network_output = (value == "true");
     } else {
       throw rtpmidid::ini_exception(filename, lineno, "Invalid key: {}", key);
     }

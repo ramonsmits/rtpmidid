@@ -78,9 +78,10 @@ std::shared_ptr<midipeer_t>
 make_network_rtpmidi_multi_listener(const std::string &name,
                                     const std::string &port,
                                     std::shared_ptr<aseq_t> aseq,
-                                    bool merge_network_input) {
+                                    bool merge_network_input,
+                                    bool merge_network_output) {
   return std::make_shared<network_rtpmidi_multi_listener_t>(
-      name, port, aseq, merge_network_input);
+      name, port, aseq, merge_network_input, merge_network_output);
 }
 
 std::shared_ptr<midipeer_t>

@@ -40,12 +40,15 @@ public:
   rtpmidid::rtpserver_t::status_change_event_t::connection_t
       status_change_connection;
   bool merge_network_input;
+  bool merge_network_output;
   midipeer_id_t shared_alsa_peer_id = 0;
+  midipeer_id_t shared_alsa_output_peer_id = 0;
 
   network_rtpmidi_multi_listener_t(const std::string &name,
                                    const std::string &port,
                                    std::shared_ptr<aseq_t> aseq,
-                                   bool merge_network_input = false);
+                                   bool merge_network_input = false,
+                                   bool merge_network_output = false);
   void send_midi(midipeer_id_t from, const mididata_t &) override;
   json_t status() override;
   const char *get_type() const override {
