@@ -9,6 +9,21 @@ merge, so we can discuss it, and improve it.
 If you have some idea you want to comment, but no code to show, create an
 issue, and we can later create a related pull request if needed.
 
+## Documentation checklist
+
+When adding or changing features, update all relevant documentation:
+
+- **Man pages** (`rtpmidid.1.md`, `rtpmidid-cli.1.md`) — update if you add/change
+  command-line options, INI settings, or control socket commands.
+- **README.md** — update if the change affects user-visible behavior, configuration
+  examples, or the feature roadmap.
+- **docs/CONTROL.md** — update if you add/change control socket commands.
+- **default.ini** — add commented examples for new INI settings.
+- **Tests** — add or update tests in `tests/` for new settings, router behavior,
+  or INI parsing.
+
+Man pages are built with `make man` (requires `pandoc`).
+
 Please note that when contributing code you agree that this code is GPLv3
 licensed.
 
