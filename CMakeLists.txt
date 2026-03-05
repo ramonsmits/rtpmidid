@@ -129,10 +129,24 @@ execute_process(
   COMMAND bash -c "git rev-parse --abbrev-ref HEAD | tr -d '\n'"
   OUTPUT_VARIABLE GIT_BRANCH
 )
+execute_process(
+  COMMAND bash -c "git remote get-url origin 2>/dev/null | sed -n 's|.*[:/]\\([^/]*\\)/[^/]*\\.git$|\\1|p' | tr -d '\n'"
+  OUTPUT_VARIABLE GIT_FORK_OWNER
+)
+execute_process(
+  COMMAND bash -c "git remote get-url origin 2>/dev/null | sed 's|git@github.com:|https://github.com/|' | sed 's|\\.git$||' | tr -d '\n'"
+  OUTPUT_VARIABLE GIT_FORK_URL
+)
 if(NOT GIT_BRANCH MATCHES "^(master|main)$")
   set(RTPMIDID_VERSION "${RTPMIDID_VERSION}-${GIT_BRANCH}")
 endif()
+if(GIT_FORK_OWNER AND NOT GIT_FORK_OWNER STREQUAL "davidmoreno")
+  set(RTPMIDID_VERSION "${RTPMIDID_VERSION}+${GIT_FORK_OWNER}")
+endif()
 add_definitions(-DRTPMIDID_VERSION=\"${RTPMIDID_VERSION}\")
+if(GIT_FORK_URL)
+  add_definitions(-DRTPMIDID_FORK_URL=\"${GIT_FORK_URL}\")
+endif()
 add_definitions(-DLOG_LEVEL=${LOG_LEVEL})
 message(STATUS "Version ${RTPMIDID_VERSION}")
 message(STATUS "Log level ${LOG_LEVEL} (1=debug, 2=info, 3=warning, 4=error)")

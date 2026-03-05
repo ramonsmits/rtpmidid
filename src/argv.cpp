@@ -36,8 +36,14 @@ namespace rtpmididns {
 #define RTPMIDID_VERSION "unknown"
 #endif
 
+#ifndef RTPMIDID_FORK_URL
+#define RTPMIDID_FORK_URL ""
+#endif
+
 // NOLINTNEXTLINE
 const char *VERSION = RTPMIDID_VERSION;
+// NOLINTNEXTLINE
+const char *FORK_URL = RTPMIDID_FORK_URL;
 
 // NOLINTNEXTLINE (cppcoreguidelines-pro-bounds-pointer-arithmetic)
 constexpr const char *const CMDLINE_HELP = &R"(
@@ -93,6 +99,8 @@ static std::string get_hostname() {
 
 void help(const std::vector<argument_t> &arguments) {
   std::print(CMDLINE_HELP, VERSION);
+  if (FORK_URL[0] != '\0')
+    std::print("Fork: {}\n\n", FORK_URL);
   for (auto &argument : arguments) {
     std::print("  {:<30} {}\n", argument.arg, argument.comment);
   }
@@ -195,7 +203,9 @@ static std::vector<argument_t> setup_arguments(settings_t *settings) {
   arguments.emplace_back( //
       "--version",        //
       "Show version", [](const std::string &value) {
-        std::print("rtpmidid version {}/2\n", VERSION);
+        std::print("rtpmidid version {}\n", VERSION);
+        if (FORK_URL[0] != '\0')
+          std::print("Fork: {}\n", FORK_URL);
         exit(0);
       });
   arguments.emplace_back( //
