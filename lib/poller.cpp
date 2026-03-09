@@ -23,6 +23,8 @@
 
 #include <algorithm>
 #include <cassert>
+#include <climits>
+#include <cstdint>
 #include <map>
 #include <rtpmidid/exceptions.hpp>
 #include <rtpmidid/logger.hpp>
@@ -191,10 +193,10 @@ static int chrono_ms_to_int(std::chrono::milliseconds &ms) {
   return int(std::chrono::duration_cast<std::chrono::milliseconds>(ms).count());
 }
 
-static int ms_to_now(std::chrono::steady_clock::time_point &tp) {
-  return int(std::chrono::duration_cast<std::chrono::milliseconds>(
-                 tp - std::chrono::steady_clock::now())
-                 .count());
+static int64_t ms_to_now(std::chrono::steady_clock::time_point &tp) {
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+             tp - std::chrono::steady_clock::now())
+      .count();
 }
 
 static void run_expired_timer_events(std::vector<timer_event_t> &events) {
@@ -229,17 +231,17 @@ void run_call_later_events(poller_private_data_t *private_data) {
 void poller_t::wait(std::optional<std::chrono::milliseconds> max_wait_ms) {
   const auto MAX_EVENTS = 10;
   std::array<struct epoll_event, MAX_EVENTS> events{};
-  auto wait_ms = 10'000'000; // not forever, but a lot (10'000s)
+  int64_t wait_ms = 10'000'000; // not forever, but a lot (10'000s)
 
   // Get first timer (always sorted) timeout
   if (!private_data->timer_events.empty()) {
     wait_ms = ms_to_now(private_data->timer_events[0].when);
-    wait_ms = std::max(wait_ms, 0); // min wait 0ms.
+    wait_ms = std::max(wait_ms, int64_t(0)); // min wait 0ms.
   }
   // Maybe some default value, if so, maybe use it if less than previous value
   if (max_wait_ms.has_value()) {
     auto max_wait_in_ms = chrono_ms_to_int(max_wait_ms.value());
-    wait_ms = std::min(wait_ms, max_wait_in_ms);
+    wait_ms = std::min(wait_ms, int64_t(max_wait_in_ms));
   }
 
   // DEBUG("Wait {} ms", wait_ms);
@@ -248,8 +250,10 @@ void poller_t::wait(std::optional<std::chrono::milliseconds> max_wait_ms) {
   // wait, get events or timeouts
   auto nfds = 0;
   if (wait_ms != 0) { // Maybe no wait. Some timer event pending.
+    // Clamp to INT_MAX for epoll_wait which takes int
+    int epoll_timeout = wait_ms > INT_MAX ? INT_MAX : static_cast<int>(wait_ms);
     nfds =
-        epoll_wait(private_data->epollfd, events.data(), MAX_EVENTS, wait_ms);
+        epoll_wait(private_data->epollfd, events.data(), MAX_EVENTS, epoll_timeout);
 
     if (nfds == -1)
       ERROR("epoll_wait failed: {}", strerror(errno));
@@ -261,10 +265,21 @@ void poller_t::wait(std::optional<std::chrono::milliseconds> max_wait_ms) {
     // DEBUG("IO EVENT");
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
     auto fd = events[n].data.fd;
+    auto ev = events[n].events;
+    if ((ev & (EPOLLERR | EPOLLHUP)) && !(ev & EPOLLIN)) {
+      ERROR("Socket error (events=0x{:x}) on fd {}. Removing from poller.", ev,
+            fd);
+      private_data->fd_events.erase(fd);
+      epoll_ctl(private_data->epollfd, EPOLL_CTL_DEL, fd, NULL);
+      continue;
+    }
     try {
       private_data->fd_events[fd](fd);
     } catch (const std::exception &e) {
-      ERROR_ONCE("Caught exception at poller: {}", e.what());
+      ERROR("Exception at poller on fd {}: {}. Removing from poller.", fd,
+            e.what());
+      private_data->fd_events.erase(fd);
+      epoll_ctl(private_data->epollfd, EPOLL_CTL_DEL, fd, NULL);
     }
   }
 

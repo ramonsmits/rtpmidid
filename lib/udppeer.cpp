@@ -81,6 +81,15 @@ int udppeer_t::open(const network_address_list_t &address_list) {
 }
 
 void udppeer_t::data_ready() {
+  // Clear any pending socket error first to prevent epoll busy loops
+  int sockerr = 0;
+  socklen_t errlen = sizeof(sockerr);
+  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &sockerr, &errlen) == 0 &&
+      sockerr != 0) {
+    ERROR("Socket error on fd {}: {} ({})", fd, strerror(sockerr), sockerr);
+    return;
+  }
+
   std::array<uint8_t, 1500> raw{};
   struct sockaddr_storage cliaddr {};
   unsigned int len = sizeof(cliaddr);
@@ -88,11 +97,12 @@ void udppeer_t::data_ready() {
                     sockaddr_storage_to_sockaddr(&cliaddr), &len);
   // DEBUG0("Got some data from control: {}", n);
 
-  network_address_t network_address{&cliaddr, len};
-
   if (n < 0) {
-    throw exception("Error reading at {}", network_address.to_string());
+    ERROR("Error reading on fd {}: {} ({})", fd, strerror(errno), errno);
+    return;
   }
+
+  network_address_t network_address{&cliaddr, len};
 
   packet_t packet(raw.data(), n);
 
