@@ -32,6 +32,7 @@
 #include <avahi-common/alternative.h>
 #include <avahi-common/error.h>
 #include <avahi-common/malloc.h>
+#include <avahi-common/timeval.h>
 
 const char *RTPMIDI_MDNS_SERVICE_NAME = "_apple-midi._udp";
 
@@ -46,6 +47,7 @@ struct AvahiWatch {
   void *userdata = nullptr;
   AvahiWatchCallback callback = nullptr;
   AvahiWatchEvent event = AVAHI_WATCH_IN;
+  rtpmidid::mdns_rtpmidi_t *mdns = nullptr;
 };
 
 ENUM_FORMATTER_BEGIN(AvahiEntryGroupState)
@@ -119,18 +121,18 @@ AvahiWatch *poller_adapter_watch_new(const AvahiPoll *api, int fd,
   // NOLINTNEXTLINE
   AvahiWatch *wd = new AvahiWatch;
   wd->fd = fd;
-  wd->userdata = api->userdata;
+  wd->userdata = userdata;
   wd->callback = callback;
-  auto *mdns_rtpmidid = static_cast<rtpmidid::mdns_rtpmidi_t *>(api->userdata);
+  wd->mdns = static_cast<rtpmidid::mdns_rtpmidi_t *>(api->userdata);
 
   wd->event = event;
   if (event == AVAHI_WATCH_IN) {
-    mdns_rtpmidid->watch_in_poller =
+    wd->mdns->watch_in_poller =
         rtpmidid::poller.add_fd_in(fd, [wd](int _) {
           wd->callback(wd, wd->fd, AVAHI_WATCH_IN, wd->userdata);
         });
   } else if (event == AVAHI_WATCH_OUT) {
-    mdns_rtpmidid->watch_out_poller =
+    wd->mdns->watch_out_poller =
         rtpmidid::poller.add_fd_in(fd, [wd](int _) {
           wd->callback(wd, wd->fd, AVAHI_WATCH_OUT, wd->userdata);
         });
@@ -143,20 +145,19 @@ AvahiWatch *poller_adapter_watch_new(const AvahiPoll *api, int fd,
 
 /// Update the events to wait for. More...
 void poller_adapter_watch_update(AvahiWatch *wd, AvahiWatchEvent event) {
-  auto *mdns_rtpmidid = static_cast<rtpmidid::mdns_rtpmidi_t *>(wd->userdata);
-  if (mdns_rtpmidid == nullptr) {
+  if (wd->mdns == nullptr) {
     WARNING("Got a watch_update without a mdns_rtpmidi_t");
     return;
   }
 
   wd->event = event;
   if (event == AVAHI_WATCH_IN) {
-    mdns_rtpmidid->watch_in_poller =
+    wd->mdns->watch_in_poller =
         rtpmidid::poller.add_fd_in(wd->fd, [wd](int _) {
           wd->callback(wd, wd->fd, AVAHI_WATCH_IN, wd->userdata);
         });
   } else if (event == AVAHI_WATCH_OUT) {
-    mdns_rtpmidid->watch_out_poller =
+    wd->mdns->watch_out_poller =
         rtpmidid::poller.add_fd_in(wd->fd, [wd](int _) {
           wd->callback(wd, wd->fd, AVAHI_WATCH_OUT, wd->userdata);
         });
@@ -172,13 +173,9 @@ AvahiWatchEvent poller_adapter_watch_get_events(AvahiWatch *w) {
 
 /// Free a watch. More...
 void poller_adapter_watch_free(AvahiWatch *w) {
-  // rtpmidid::poller.remove_fd(w->fd);
-  // WARNING("TODO! If its only at program end, no problem.");
-  auto *mdns_rtpmidid = static_cast<rtpmidid::mdns_rtpmidi_t *>(w->userdata);
-
-  if (mdns_rtpmidid != nullptr) {
-    mdns_rtpmidid->watch_in_poller.stop();
-    mdns_rtpmidid->watch_out_poller.stop();
+  if (w->mdns != nullptr) {
+    w->mdns->watch_in_poller.stop();
+    w->mdns->watch_out_poller.stop();
   }
   // NOLINTNEXTLINE
   delete w;
@@ -195,17 +192,13 @@ AvahiTimeout *poller_adapter_timeout_new(const AvahiPoll *api,
   to->callback = callback;
   to->timer_id = 0;
   if (tv) {
-    auto chrono_tv =
-        std::chrono::milliseconds(tv->tv_sec * 1000 + tv->tv_usec / 1000);
-    // if (chrono_tv.count() <= 0) {
-    //   to->callback(to, to->userdata);
-    //   to->timer_id = 0;
-    // } else {
+    // Avahi passes absolute timeval; convert to relative ms for our poller
+    auto age_us = avahi_age(tv);
+    auto relative_ms = (age_us < 0) ? (-age_us / 1000) : 0;
+    auto chrono_tv = std::chrono::milliseconds(relative_ms);
     to->timer_id = rtpmidid::poller.add_timer_event(chrono_tv, [to] {
-      DEBUG("Timeout for to {} {}", (void *)to, to->timer_id.id);
       to->callback(to, to->userdata);
     });
-    // }
   }
   return to;
 }
@@ -215,16 +208,12 @@ AvahiTimeout *poller_adapter_timeout_new(const AvahiPoll *api,
 void poller_adapter_timeout_update(AvahiTimeout *to, const struct timeval *tv) {
   rtpmidid::poller.remove_timer(to->timer_id);
   if (tv) {
-    auto chrono_tv =
-        std::chrono::milliseconds(tv->tv_sec * 1000 + tv->tv_usec / 1000);
-    // if (chrono_tv.count() <= 0) {
-    //   // DEBUG("Inmediate call, timeout <= 0");
-    //   to->callback(to, to->userdata);
-    //   to->timer_id = 0;
-    // } else {
+    // Avahi passes absolute timeval; convert to relative ms for our poller
+    auto age_us = avahi_age(tv);
+    auto relative_ms = (age_us < 0) ? (-age_us / 1000) : 0;
+    auto chrono_tv = std::chrono::milliseconds(relative_ms);
     to->timer_id = rtpmidid::poller.add_timer_event(
         chrono_tv, [to] { to->callback(to, to->userdata); });
-    // }
   }
 }
 
